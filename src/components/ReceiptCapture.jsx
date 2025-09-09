@@ -209,7 +209,6 @@ export default function ReceiptCapture() {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     hidden
                     onChange={onFilePick}
                   />
