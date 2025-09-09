@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
+/** Get raw body as string from either req.body (dev) or the stream (prod) */
 async function getRawBody(req) {
   if (req.body !== undefined && req.body !== null) {
     if (typeof req.body === 'string') return req.body;
@@ -11,10 +12,16 @@ async function getRawBody(req) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+/** Parse body that may be:
+ *  - JSON: {"base64Receipt":"...","mimeType":"..."}
+ *  - data URL: "data:image/jpeg;base64,AAAA..."
+ *  - raw base64: "AAAA..."
+ */
 function parseBody(raw) {
   if (!raw) return { base64: '', mimeType: '' };
   const s = raw.trim();
 
+  // JSON?
   if (s.startsWith('{')) {
     try {
       const obj = JSON.parse(s);
@@ -25,11 +32,13 @@ function parseBody(raw) {
     } catch { /* fall through */ }
   }
 
+  // Data URL?
   if (s.startsWith('data:')) {
     const m = s.match(/^data:([^;]+);base64,(.*)$/);
     if (m && m[2]) return { base64: m[2], mimeType: m[1] || '' };
   }
 
+  // Assume raw base64
   return { base64: s, mimeType: '' };
 }
 
@@ -45,7 +54,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server misconfigured: GEMINI_API_KEY missing' });
     }
 
-    // Read and parse body
+    // Read and parse body (works in dev & prod)
     const raw = await getRawBody(req);
     console.log('[extract] raw length:', raw?.length || 0);
     const { base64, mimeType } = parseBody(raw);
@@ -55,6 +64,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing base64Receipt' });
     }
 
+    // ~6M base64 ≈ ~4.5MB binary — adjust if you like
     if (base64.length > 6_000_000) {
       return res.status(413).json({ error: 'Image too large' });
     }
@@ -65,12 +75,10 @@ export default async function handler(req, res) {
 
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const request = {
-        model,
-        contents: [
-        {
-            inlineData: { mimeType: "image/jpeg", data: base64Receipt },
-        },
-        {
+      model: 'gemini-1.5-flash',
+      contents: [
+        { inlineData: { mimeType: mt, data: base64 } },
+        { 
             text: `
             You are a professional receipt reader. Extract fields from this receipt image. 
             Only the following fields are needed:
@@ -92,37 +100,33 @@ export default async function handler(req, res) {
             This is an example of a JSON format. 
             
             {
-            "merchant": "Starbucks Coffee",
-            "address": "123 Orchard Road, Singapore",
-            "date": "2025-08-29",
-            "subtotal": 9.50,
-            "tax": 0.50,
-            "total": 10.00,
-            "line_items": [
-                {
-                "description": "Latte Tall",
-                "quantity": 1,
-                "unit_price": 5.00,
-                "amount": 5.00
-                },
-                {
-                "description": "Blueberry Muffin",
-                "quantity": 1,
-                "unit_price": 4.50,
-                "amount": 4.50
-                }
-            ]
-            }
-
-            `,
+                "merchant": "Starbucks Coffee",
+                "address": "123 Orchard Road, Singapore",
+                "date": "2025-08-29",
+                "subtotal": 9.50,
+                "tax": 0.50,
+                "total": 10.00,
+                "line_items": [
+                    {
+                        "description": "Latte Tall",
+                        "quantity": 1,
+                        "unit_price": 5.00,
+                        "amount": 5.00
+                    },
+                    {
+                        "description": "Blueberry Muffin",
+                        "quantity": 1,
+                        "unit_price": 4.50,
+                        "amount": 4.50
+                    }
+                ]
+            }`
         },
-        ],
-        generationConfig: {
-        temperature: 0,
-        topP: 0,
-        topK: 1,
-        maxOutputTokens: 1024,
-        response_mime_type: "application/json",
+      ],
+      
+      generationConfig: {
+        temperature: 0, topP: 0, topK: 1, maxOutputTokens: 1024,
+        response_mime_type: 'application/json',
         response_schema: {
             type: "object",
             properties: {
@@ -147,9 +151,10 @@ export default async function handler(req, res) {
             },
             },
             required: ["merchant", "date", "total"],
-        },
-        },
+        }
+      },
     };
+    console.log(request)
 
     let result;
     try {
