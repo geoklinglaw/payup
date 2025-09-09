@@ -10,6 +10,7 @@ const { computePairwise } = useBillState()
 const lines = useMemo(() => computePairwise(), [computePairwise])
 const text = `Final Split
 ${lines.map(l => `- ${l}`).join('')}`
+console.log("print split")
 console.log(lines)
 
 

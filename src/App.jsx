@@ -4,12 +4,11 @@ import Fab from './components/Fab'
 import ContributorsPanel from './components/ContributorsPanel'
 import ReceiptCapture from './components/ReceiptCapture'
 import BillEntry from './components/BillEntry'
-import BillsList from './components/BillsList'
 import FinalSummary from './components/FinalSummary'
 import { BillProvider, useBillState } from './state/useBillState'
 
 function StepRouter() {
-  const { state, dispatch, callExtractHandler } = useBillState()
+  const { state, dispatch, callExtractHandler, callSaveHandler } = useBillState()
   const [busy, setBusy] = useState(false);
 
   const canNext = () => {
@@ -52,7 +51,21 @@ function StepRouter() {
       return
     }
   
-    if (state.step === 2) return
+    if (state.step === 2) {
+      console.log('[StepRouter] Arrow clicked on step 1. callSaveHandler exists?', !!callSaveHandler)
+      if (!callSaveHandler) {
+        console.warn('[StepRouter] No save handler registered yet (BillEntry not mounted or not set).')
+        return
+      }
+      try {
+        const ok = await callSaveHandler() 
+        console.log('[StepRouter] Bill entry confirmed. ok =', ok)
+        dispatch({ type: 'GOTO', step: 3 })
+      } catch (err) {
+        console.error('[StepRouter] Bill entry failed:', err)
+      } 
+      return
+    }
     dispatch({ type: 'NEXT' })
   }
   
@@ -64,16 +77,21 @@ function StepRouter() {
       {state.step === 0 && <ContributorsPanel />}
       {state.step === 1 && <ReceiptCapture />}
       {state.step === 2 && <BillEntry />}
-      {state.step === 3 && <BillsList />}
-      {state.step === 4 && <FinalSummary />}
+      {state.step === 3 && <FinalSummary />}
 
       {state.step === 1 && !callExtractHandler && (
         <Alert status="warning" mt={3}>
           <AlertIcon />
-          ReceiptCapture hasn’t registered the extract handler yet.
+          There was an error capturing the receipt.
         </Alert>
       )}
 
+      {state.step === 1 && !callSaveHandler && (
+        <Alert status="warning" mt={3}>
+          <AlertIcon />
+          There was an error calculating the bill split.
+        </Alert>
+      )}
       <Fab onAdd={onAdd} onNext={onNext} isLoading={busy} />
     </Container>
   )

@@ -190,7 +190,6 @@ export default function ReceiptCapture() {
         >
           {!hasStream && !snapshotUrl && (
             <VStack py={10} spacing={3}>
-              <Text color="gray.600">Open your camera to snap the receipt</Text>
               <HStack>
                 <Button onClick={requestCamera} colorScheme="blue" isLoading={isRequesting}>
                   {isRequesting ? "Requesting…" : (

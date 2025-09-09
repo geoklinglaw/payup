@@ -38,6 +38,7 @@ import React, {
       case 'SET_RECEIPT_META':
         return { ...state, receiptMeta: { ...state.receiptMeta, ...action.meta } };
       default:
+        console.log(`CURRENT ACTION TYPE: ${action.type}`)
         return state;
     }
   }
@@ -65,31 +66,41 @@ import React, {
     return saveHandlerRef.current()
   }
       
-    const computePairwise = () => {
-      const idToName = Object.fromEntries(state.contributors.map(c => [c.id, c.name]));
-      const map = new Map();
-      state.bills.forEach(bill => {
-        bill.items.forEach(item => {
-          const share = item.price / Math.max(1, item.assignees.length);
-          item.assignees.forEach(payerId => {
-            if (payerId === bill.hostId) return;
-            const key = `${payerId}->${bill.hostId}`;
-            map.set(key, (map.get(key) || 0) + share);
-          });
+  const computePairwise = () => {
+    const idToName = Object.fromEntries(state.contributors.map(c => [c.id, c.name]));
+    const map = new Map();
+
+    // Pre-tax item splitting
+    state.bills.forEach(bill => {
+      bill.items.forEach(item => {
+        const share = item.price / Math.max(1, item.assignees.length);
+        item.assignees.forEach(payerId => {
+          if (payerId === bill.hostId) return;
+          const key = `${payerId}->${bill.hostId}`;
+          map.set(key, (map.get(key) || 0) + share);
         });
       });
-      return Array.from(map.entries())
-        .filter(([, amt]) => amt > 0.009)
-        .map(([key, amt]) => {
-          const [payer, payee] = key.split('->');
-          return `${idToName[payer]} pays ${idToName[payee]} $${amt.toFixed(2)}`;
-        });
-    };
+    });
+
+    // Apply tax proportionally
+    const { subtotal, tax } = state.receiptMeta;
+    const taxMultiplier = subtotal > 0 ? (1 + tax / subtotal) : 1;
+
+    return Array.from(map.entries())
+      .filter(([, amt]) => amt > 0.009)
+      .map(([key, amt]) => {
+        const [payer, payee] = key.split('->');
+        const finalAmt = amt * taxMultiplier;
+        return `${idToName[payer]} pays ${idToName[payee]} $${finalAmt.toFixed(2)}`;
+      });
+  };
+
   
     const value = useMemo(
       () => ({ state, dispatch, computePairwise, setExtractHandler, callExtractHandler, setSaveHandler, callSaveHandler }),
       [state]
     );
+    console.log(value)
   
     return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
   }
