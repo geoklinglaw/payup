@@ -8,7 +8,7 @@ import FinalSummary from './components/FinalSummary'
 import { BillProvider, useBillState } from './state/useBillState'
 
 function StepRouter() {
-  const { state, dispatch, callExtractHandler, callSaveHandler } = useBillState()
+  const { state, dispatch, callExtractHandler, callSaveHandler, resetAll } = useBillState()
   const [busy, setBusy] = useState(false);
   const shouldNavigateToHome = state.step === 3;
 
@@ -68,7 +68,7 @@ function StepRouter() {
     }
 
     if (state.step === 3) {
-      dispatch({ type: 'GOTO', step: 0 })
+      resetAll()
       return
     }
 
