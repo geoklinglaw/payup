@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Box, Card, CardBody, HStack, Text, IconButton, Input, Stack, Select,
-  NumberInput, NumberInputField, SimpleGrid, Divider, Wrap, WrapItem, Heading,
-  Badge, Checkbox, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex, Tooltip
-} from '@chakra-ui/react'
+  Box, Card, CardBody, Heading, HStack, Input, NumberInput, NumberInputField, Select, SimpleGrid, Stack, Text, Checkbox, IconButton,  Flex, Divider, Wrap, WrapItem, Badge, Tooltip} from '@chakra-ui/react'
 import { AddIcon, DeleteIcon } from '@chakra-ui/icons'
 import { useBillState } from '../state/useBillState'
 
@@ -97,145 +94,161 @@ export default function BillEntry() {
 
   return (
     <Box className="max-w-5xl mx-auto" p={6}>
-      <Heading size="md" mb={4}>Add Bill Contribution</Heading>
+      <Heading size="md" mb={4}>Add single bill</Heading>
 
-    <Card mb={4}> 
-      <CardBody> 
-        <Text fontWeight="semibold">Bill Information</Text>
-        <SimpleGrid columns={[1, 3]} gap={4} marginTop={"3"}> 
-          <Stack> 
-            <Text fontSize="sm" color="gray.600">Name</Text> 
-            <Input value={name} onChange={e => setName(e.target.value)} />
+      {/* Bill meta */}
+      <Card mb={4}>
+        <CardBody>
+          <SimpleGrid columns={[1, 3]} gap={4}>
+            <Stack>
+              <Text fontSize="sm" color="gray.600">Name</Text>
+              <Input value={name} onChange={e => setName(e.target.value)} />
+            </Stack>
 
-            </Stack> <Stack> <Text fontSize="sm" color="gray.600">Host</Text> 
-            <Select value={hostId} onChange={e => setHostId(e.target.value)}> 
-              {contributors.map(c => ( <option key={c.id} value={c.id}>{c.name}</option> ))} 
-            
-            </Select> </Stack> <Stack> <Text fontSize="sm" color="gray.600">Additional Charges (%)</Text> 
-            <NumberInput value={taxRate} min={0} precision={2} step={0.25} onChange={(_, v) => setTaxRate(Number.isFinite(v) ? v : 0)} > <NumberInputField /> </NumberInput> 
-            </Stack> 
-            </SimpleGrid> 
-            </CardBody> 
-    </Card>
-    <Card>
-      <CardBody>
-        <HStack justify="space-between" mb={3}>
-          <Text fontWeight="semibold">Items</Text>
-          <IconButton
-            aria-label="Add item"
-            icon={<AddIcon />}
-            variant="outline"
-            onClick={addRow}
-            size="sm"
-          />
-        </HStack>
+            <Stack>
+              <Text fontSize="sm" color="gray.600">Host</Text>
+              <Select value={hostId} onChange={e => setHostId(e.target.value)}>
+                {contributors.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Select>
+            </Stack>
 
+            <Stack>
+              <Text fontSize="sm" color="gray.600">Tax Rate (%)</Text>
+              <NumberInput
+                value={taxRate}
+                min={0}
+                precision={2}
+                step={0.25}
+                onChange={(_, v) => setTaxRate(Number.isFinite(v) ? v : 0)}
+              >
+                <NumberInputField />
+              </NumberInput>
+            </Stack>
+          </SimpleGrid>
+        </CardBody>
+      </Card>
 
-        {/* Per item information */}
-        <Box>
-          <Stack spacing={4}>
-            {items.map((it, idx) => (
-              <Card key={it.id} variant="outline">
-                <CardBody>
-                  <Flex align="center" justify="space-between" mb={3} gap={3}>
-                    <Box flex="1">
-                      <Text fontSize="xs" color="gray.500" mb={1}>Item</Text>
-                      <Input
+      {/* Items */}
+      <Card>
+        <CardBody>
+          <HStack justify="space-between" mb={3}>
+            <Text fontWeight="semibold">Items</Text>
+            <IconButton
+              aria-label="Add item"
+              icon={<AddIcon />}
+              variant="outline"
+              onClick={addRow}
+              size="sm"
+            />
+          </HStack>
+
+          {/* stacked cards per item */}
+          <Box>
+            <Stack spacing={4}>
+              {items.map((it, idx) => (
+                <Card key={it.id} variant="outline">
+                  <CardBody>
+                    <Flex align="center" justify="space-between" mb={3} gap={3}>
+                      <Box flex="1">
+                        <Text fontSize="xs" color="gray.500" mb={1}>Item</Text>
+                        <Input
+                          size="sm"
+                          value={it.label}
+                          onChange={e => update(it.id, { label: e.target.value })}
+                          placeholder={`Food item ${idx + 1}`}
+                        />
+                      </Box>
+                      <IconButton
+                        aria-label="Remove item"
+                        icon={<DeleteIcon />}
                         size="sm"
-                        value={it.label}
-                        onChange={e => update(it.id, { label: e.target.value })}
-                        placeholder={`Food item ${idx + 1}`}
+                        variant="ghost"
+                        onClick={() => removeRow(it.id)}
                       />
-                    </Box>
-                    <IconButton
-                      aria-label="Remove item"
-                      icon={<DeleteIcon />}
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeRow(it.id)}
-                    />
-                  </Flex>
+                    </Flex>
 
-                  <SimpleGrid columns={2} gap={3} mb={3}>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500" mb={1}>UnitPrice</Text>
-                      <NumberInput
-                        size="sm"
-                        value={Number.isFinite(it.price) ? it.price : 0}
-                        min={0}
-                        precision={2}
-                        step={0.5}
-                        onChange={(_, v) => update(it.id, { price: Number.isFinite(v) ? v : 0 })}
-                      >
-                        <NumberInputField />
-                      </NumberInput>
-                    </Box>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500" mb={1}>Quantity</Text>
-                      <NumberInput
-                        size="sm"
-                        value={Number.isFinite(it.quantity) ? it.quantity : 1}
-                        min={1}
-                        step={1}
-                        onChange={(_, v) => update(it.id, { quantity: Number.isFinite(v) ? v : 1 })}
-                      >
-                        <NumberInputField />
-                      </NumberInput>
-                    </Box>
-                  </SimpleGrid>
-
-                  <Divider mb={3} />
-
-                  <Text fontSize="xs" color="gray.500" mb={2}>Contributors</Text>
-                  <Wrap spacing={3}>
-                    <WrapItem>
-                      <Checkbox
-                        isChecked={rowAllChecked(it)}
-                        isIndeterminate={
-                          it.assignees.length > 0 && it.assignees.length < contributors.length
-                        }
-                        onChange={(e) => toggleRowAll(it.id, e.target.checked)}
-                      >
-                        <Badge variant="subtle" px={2} py={1} rounded="md">All</Badge>
-                      </Checkbox>
-                    </WrapItem>
-
-                    {contributors.map(c => (
-                      <WrapItem key={c.id}>
-                        <Checkbox
-                          isChecked={it.assignees.includes(c.id)}
-                          onChange={() => toggleAssignee(it.id, c.id)}
+                    <SimpleGrid columns={2} gap={3} mb={3}>
+                      <Box>
+                        <Text fontSize="xs" color="gray.500" mb={1}>UnitPrice</Text>
+                        <NumberInput
+                          size="sm"
+                          value={Number.isFinite(it.price) ? it.price : 0}
+                          min={0}
+                          precision={2}
+                          step={0.5}
+                          onChange={(_, v) => update(it.id, { price: Number.isFinite(v) ? v : 0 })}
                         >
-                          <Tooltip label={c.name} hasArrow>
-                            <Badge
-                              variant="subtle"
-                              px={2}
-                              py={1}
-                              rounded="md"
-                              maxW="28ch"
-                              noOfLines={1}
-                            >
-                              {c.name}
-                            </Badge>
-                          </Tooltip>
+                          <NumberInputField />
+                        </NumberInput>
+                      </Box>
+                      <Box>
+                        <Text fontSize="xs" color="gray.500" mb={1}>Quantity</Text>
+                        <NumberInput
+                          size="sm"
+                          value={Number.isFinite(it.quantity) ? it.quantity : 1}
+                          min={1}
+                          step={1}
+                          onChange={(_, v) => update(it.id, { quantity: Number.isFinite(v) ? v : 1 })}
+                        >
+                          <NumberInputField />
+                        </NumberInput>
+                      </Box>
+                    </SimpleGrid>
+
+                    <Divider mb={3} />
+
+                    <Text fontSize="xs" color="gray.500" mb={2}>Contributors</Text>
+                    <Wrap spacing={3}>
+                      <WrapItem>
+                        <Checkbox
+                          isChecked={rowAllChecked(it)}
+                          isIndeterminate={
+                            it.assignees.length > 0 && it.assignees.length < contributors.length
+                          }
+                          onChange={(e) => toggleRowAll(it.id, e.target.checked)}
+                        >
+                          <Badge variant="subtle" px={2} py={1} rounded="md">All</Badge>
                         </Checkbox>
                       </WrapItem>
-                    ))}
-                  </Wrap>
-                </CardBody>
-              </Card>
-            ))}
-          </Stack>
-        </Box>
 
-        <HStack justify="space-between" mt={6}>
-          <Text fontWeight="semibold">
-            Estimated Total (incl. tax): ${total.toFixed(2)}
-          </Text>
-        </HStack>
-      </CardBody>
-    </Card>
+                      {contributors.map(c => (
+                        <WrapItem key={c.id}>
+                          <Checkbox
+                            isChecked={it.assignees.includes(c.id)}
+                            onChange={() => toggleAssignee(it.id, c.id)}
+                          >
+                            <Tooltip label={c.name} hasArrow>
+                              <Badge
+                                variant="subtle"
+                                px={2}
+                                py={1}
+                                rounded="md"
+                                maxW="28ch"
+                                noOfLines={1}
+                              >
+                                {c.name}
+                              </Badge>
+                            </Tooltip>
+                          </Checkbox>
+                        </WrapItem>
+                      ))}
+                    </Wrap>
+                  </CardBody>
+                </Card>
+              ))}
+            </Stack>
+          </Box>
+
+          <HStack justify="space-between" mt={6}>
+            <Text fontWeight="semibold">
+              Estimated Total (incl. tax): ${total.toFixed(2)}
+            </Text>
+          </HStack>
+        </CardBody>
+      </Card>
 
     </Box>
   )
-};
+}
