@@ -13,6 +13,7 @@ import React, {
     activeBillId: undefined,
     receiptItems: [],
     receiptMeta: { merchant: '', date: '', subtotal: 0, tax: 0, total: 0 },
+    snapshotUrl: null
   });
   
   function reducer(state, action) {
@@ -37,6 +38,8 @@ import React, {
         return { ...state, receiptItems: action.items };
       case 'SET_RECEIPT_META':
         return { ...state, receiptMeta: { ...state.receiptMeta, ...action.meta } };
+      case 'SET_SNAPSHOT_URL':
+        return { ...state, snapshotUrl: action.url };
       case 'RESET':
         return initialState();
       default:

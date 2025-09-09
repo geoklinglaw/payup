@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Box, Container, Progress, Alert, AlertIcon } from '@chakra-ui/react'
 import Fab from './components/Fab'
 import ContributorsPanel from './components/ContributorsPanel'
@@ -11,6 +11,18 @@ function StepRouter() {
   const { state, dispatch, callExtractHandler, callSaveHandler, resetAll } = useBillState()
   const [busy, setBusy] = useState(false);
   const shouldNavigateToHome = state.step === 3;
+  const fileInputRef = useRef(null);
+  
+  const handleFilePicked = (e) => {
+    const f = e.target.files?.[0];
+    // allow picking the same file again later
+    e.target.value = '';
+    if (!f) return; // user cancelled -> stay on step 0
+    const url = URL.createObjectURL(f);
+    // if you had a previous snapshotUrl you can revoke it here if you store it
+    dispatch({ type: 'SET_SNAPSHOT_URL', url });
+    dispatch({ type: 'GOTO', step: 1 }); // show the image page
+  };
 
   const canNext = () => {
     if (state.step === 0) return state.contributors.length > 1
@@ -31,7 +43,12 @@ function StepRouter() {
 
   const onNext = async () => {
     if (!canNext()) return
-  
+
+    if (state.step === 0) {
+      fileInputRef.current?.click();
+      return; 
+    }
+
     if (state.step === 1) {
       console.log('[StepRouter] Arrow clicked on step 1. callExtractHandler exists?', !!callExtractHandler)
       if (!callExtractHandler) {
@@ -101,6 +118,13 @@ function StepRouter() {
       )}
 
       <Fab onAdd={onAdd} onNext={onNext} isLoading={busy} navigateToHome={shouldNavigateToHome} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handleFilePicked}
+      />
     </Container>
   )
 }

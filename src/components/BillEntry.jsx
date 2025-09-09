@@ -135,9 +135,8 @@ export default function BillEntry() {
 
   return (
     <Box className="max-w-5xl mx-auto" p={6}>
-      <Heading size="md" mb={4}>Add single bill</Heading>
+      <Heading size="md" mb={4}>Edit Bill</Heading>
 
-      {/* Inline alert(s) */}
       {hostError && (
         <Alert status="warning" mb={4}>
           <AlertIcon />
