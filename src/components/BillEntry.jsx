@@ -139,13 +139,13 @@ export default function BillEntry() {
 
       {/* Inline alert(s) */}
       {hostError && (
-        <Alert status="error" mb={4}>
+        <Alert status="warning" mb={4}>
           <AlertIcon />
           Please add at least one contributor and select a host before saving.
         </Alert>
       )}
       {assigneeErrors.length > 0 && (
-        <Alert status="error" mb={4}>
+        <Alert status="warning" mb={4}>
           <AlertIcon />
           {assigneeErrors.length} item{assigneeErrors.length > 1 ? 's' : ''} have no contributors selected. Please select at least one contributor for each.
         </Alert>

@@ -30,7 +30,7 @@ export default function ContributorsPanel() {
       <Heading size="md" mb={4}>Contributors</Heading>
 
       {tooFew && (
-        <Alert status="error" mb={4}>
+        <Alert status="warning" mb={4}>
           <AlertIcon />
           Add at least two contributors to continue
           {remaining > 0 ? ` (${remaining} more needed)` : ''}.
