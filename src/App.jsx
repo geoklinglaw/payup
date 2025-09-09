@@ -10,6 +10,7 @@ import { BillProvider, useBillState } from './state/useBillState'
 function StepRouter() {
   const { state, dispatch, callExtractHandler, callSaveHandler } = useBillState()
   const [busy, setBusy] = useState(false);
+  const shouldNavigateToHome = state.step === 3;
 
   const canNext = () => {
     if (state.step === 0) return state.contributors.length >= 1
@@ -41,7 +42,6 @@ function StepRouter() {
         setBusy(true); 
         const ok = await callExtractHandler() 
         console.log('[StepRouter] Extraction finished. ok =', ok)
-        // Force navigation to BillEntry after extraction finishes
         dispatch({ type: 'GOTO', step: 2 })
       } catch (err) {
         console.error('[StepRouter] Extraction failed:', err)
@@ -66,6 +66,12 @@ function StepRouter() {
       } 
       return
     }
+
+    if (state.step === 3) {
+      dispatch({ type: 'GOTO', step: 0 })
+      return
+    }
+
     dispatch({ type: 'NEXT' })
   }
   
@@ -92,7 +98,8 @@ function StepRouter() {
           There was an error calculating the bill split.
         </Alert>
       )}
-      <Fab onAdd={onAdd} onNext={onNext} isLoading={busy} />
+
+      <Fab onAdd={onAdd} onNext={onNext} isLoading={busy} navigateToHome={shouldNavigateToHome} />
     </Container>
   )
 }

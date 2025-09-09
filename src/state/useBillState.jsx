@@ -90,6 +90,7 @@ import React, {
       () => ({ state, dispatch, computePairwise, setExtractHandler, callExtractHandler, setSaveHandler, callSaveHandler }),
       [state]
     );
+    console.log("value: ", value)
   
     return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
   }

@@ -190,7 +190,12 @@ export default function ReceiptCapture() {
         >
           {!hasStream && !snapshotUrl && (
             <VStack py={10} spacing={3}>
-              <HStack>
+              <VStack
+                  py={10}
+                  spacing={4}      
+                  align="center" 
+                  justify="center"
+                >
                 <Button onClick={requestCamera} colorScheme="blue" isLoading={isRequesting}>
                   {isRequesting ? "Requesting…" : (
                     <>
@@ -209,7 +214,7 @@ export default function ReceiptCapture() {
                     onChange={onFilePick}
                   />
                 </Button>
-              </HStack>
+              </VStack>
             </VStack>
           )}
 

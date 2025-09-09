@@ -39,7 +39,32 @@ export default function BillEntry() {
       : [emptyItem()]
   )
 
-  const contributors = state.contributors
+  const contributors = state.contributors;
+
+  const normalizeItems = (items, contributors) =>
+    items.map(it => ({
+      ...it,
+      assignees: it.assignees?.length
+        ? it.assignees
+        : contributors.map(c => c.id), // default to ALL (or keep [] to force user to pick)
+    }));
+
+  const saveBill = () => {
+    if (!contributors.length) {
+      console.warn('Add at least one contributor before saving.');
+      return false;
+    }
+    const normalized = normalizeItems(items, contributors);
+    const bill = { id: crypto.randomUUID(), name, hostId, taxRate, items: normalized };
+    dispatch({ type: 'ADD_BILL', bill });
+    dispatch({ type: 'GOTO', step: 3 });
+    return true;
+  };
+
+  useEffect(() => {
+    setSaveHandler(saveBill)
+  }, [setSaveHandler, name, hostId, taxRate, items])
+
 
   const addRow = () => setItems(prev => [...prev, emptyItem()])
   const removeRow = (id) => setItems(prev => prev.filter(it => it.id !== id))
@@ -75,17 +100,6 @@ export default function BillEntry() {
       )
     )
   }
-
-  const saveBill = () => {
-    const bill = { id: crypto.randomUUID(), name, hostId, taxRate, items }
-    dispatch({ type: 'ADD_BILL', bill })
-    dispatch({ type: 'GOTO', step: 3 })
-    return true 
-  }
-
-  useEffect(() => {
-    setSaveHandler(() => saveBill)
-  }, [setSaveHandler, name, hostId, taxRate, items])
 
   const total = useMemo(() => {
     const subtotal = items.reduce((s, i) => s + (Number(i.price) * Number(i.quantity) || 0), 0)
