@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Box, Card, CardBody, Heading, HStack, Input, NumberInput, NumberInputField, Select, SimpleGrid, Stack, Text, Checkbox, IconButton,  Flex, Divider, Wrap, WrapItem, Badge, Tooltip} from '@chakra-ui/react'
+  Box, Card, CardBody, Heading, HStack, Input, NumberInput, NumberInputField, Select,
+  SimpleGrid, Stack, Text, Checkbox, IconButton, Flex, Divider, Wrap, WrapItem, Badge, Tooltip,
+  Alert, AlertIcon,
+} from '@chakra-ui/react'
 import { AddIcon, DeleteIcon } from '@chakra-ui/icons'
 import { useBillState } from '../state/useBillState'
 
@@ -27,7 +30,6 @@ export default function BillEntry() {
       ? state.receiptItems.map(it => ({
           id: crypto.randomUUID(),
           label: it.description || '',
-
           price: Number.isFinite(it.unit_price)
             ? it.unit_price
             : Number.isFinite(it.amount) && Number.isFinite(it.quantity) && it.quantity > 0
@@ -39,35 +41,53 @@ export default function BillEntry() {
       : [emptyItem()]
   )
 
-  const contributors = state.contributors;
+  const contributors = state.contributors
 
-  const normalizeItems = (items, contributors) =>
-    items.map(it => ({
-      ...it,
-      assignees: it.assignees?.length
-        ? it.assignees
-        : contributors.map(c => c.id), // default to ALL (or keep [] to force user to pick)
-    }));
+  // track items with no assignees
+  const [assigneeErrors, setAssigneeErrors] = useState([])  // array of item IDs
+  const [hostError, setHostError] = useState(false)
+
+  const markErrorsForEmptyAssignees = (list) => setAssigneeErrors(list)
+  const clearItemError = (id) =>
+    setAssigneeErrors(prev => (prev.length ? prev.filter(x => x !== id) : prev))
 
   const saveBill = () => {
+    setHostError(false)
+    setAssigneeErrors([])
+
     if (!contributors.length) {
-      console.warn('Add at least one contributor before saving.');
-      return false;
+      setHostError(true)
+      return false
     }
-    const normalized = normalizeItems(items, contributors);
-    const bill = { id: crypto.randomUUID(), name, hostId, taxRate, items: normalized };
-    dispatch({ type: 'ADD_BILL', bill });
-    dispatch({ type: 'GOTO', step: 3 });
-    return true;
-  };
+    if (!hostId) {
+      setHostError(true)
+      return false
+    }
+
+    // validate: any item with positive line total must have ≥1 assignee
+    const missing = items
+      .filter(it => (Number(it.price) * Number(it.quantity)) > 0 && it.assignees.length === 0)
+      .map(it => it.id)
+
+    if (missing.length > 0) {
+      markErrorsForEmptyAssignees(missing)
+      return false
+    }
+    const bill = { id: crypto.randomUUID(), name, hostId, taxRate, items }
+    dispatch({ type: 'ADD_BILL', bill })
+    dispatch({ type: 'GOTO', step: 3 })
+    return true
+  }
 
   useEffect(() => {
     setSaveHandler(saveBill)
   }, [setSaveHandler, name, hostId, taxRate, items])
 
-
   const addRow = () => setItems(prev => [...prev, emptyItem()])
-  const removeRow = (id) => setItems(prev => prev.filter(it => it.id !== id))
+  const removeRow = (id) => {
+    setItems(prev => prev.filter(it => it.id !== id))
+    clearItemError(id)
+  }
 
   const update = (id, patch) => {
     setItems(prev => prev.map(it => (it.id === id ? { ...it, ...patch } : it)))
@@ -86,6 +106,12 @@ export default function BillEntry() {
           : it
       )
     )
+    // if they added at least one assignee, clear the error for this row
+    setTimeout(() => {
+      const item = items.find(i => i.id === id)
+      const nextLen = item ? (item.assignees.includes(who) ? item.assignees.length - 1 : item.assignees.length + 1) : 0
+      if (nextLen > 0) clearItemError(id)
+    }, 0)
   }
 
   const rowAllChecked = (it) =>
@@ -99,6 +125,7 @@ export default function BillEntry() {
           : it
       )
     )
+    if (check) clearItemError(id)
   }
 
   const total = useMemo(() => {
@@ -109,6 +136,20 @@ export default function BillEntry() {
   return (
     <Box className="max-w-5xl mx-auto" p={6}>
       <Heading size="md" mb={4}>Add single bill</Heading>
+
+      {/* Inline alert(s) */}
+      {hostError && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          Please add at least one contributor and select a host before saving.
+        </Alert>
+      )}
+      {assigneeErrors.length > 0 && (
+        <Alert status="error" mb={4}>
+          <AlertIcon />
+          {assigneeErrors.length} item{assigneeErrors.length > 1 ? 's' : ''} have no contributors selected. Please select at least one contributor for each.
+        </Alert>
+      )}
 
       {/* Bill meta */}
       <Card mb={4}>
@@ -158,100 +199,108 @@ export default function BillEntry() {
             />
           </HStack>
 
-          {/* stacked cards per item */}
           <Box>
             <Stack spacing={4}>
-              {items.map((it, idx) => (
-                <Card key={it.id} variant="outline">
-                  <CardBody>
-                    <Flex align="center" justify="space-between" mb={3} gap={3}>
-                      <Box flex="1">
-                        <Text fontSize="xs" color="gray.500" mb={1}>Item</Text>
-                        <Input
+              {items.map((it, idx) => {
+                const hasError = assigneeErrors.includes(it.id)
+                return (
+                  <Card
+                    key={it.id}
+                    id={it.id}
+                    variant="outline"
+                    borderColor={hasError ? 'red.400' : undefined}
+                    borderWidth={hasError ? '2px' : undefined}
+                  >
+                    <CardBody>
+                      <Flex align="center" justify="space-between" mb={3} gap={3}>
+                        <Box flex="1">
+                          <Text fontSize="xs" color="gray.500" mb={1}>Item</Text>
+                          <Input
+                            size="sm"
+                            value={it.label}
+                            onChange={e => update(it.id, { label: e.target.value })}
+                            placeholder={`Food item ${idx + 1}`}
+                          />
+                        </Box>
+                        <IconButton
+                          aria-label="Remove item"
+                          icon={<DeleteIcon />}
                           size="sm"
-                          value={it.label}
-                          onChange={e => update(it.id, { label: e.target.value })}
-                          placeholder={`Food item ${idx + 1}`}
+                          variant="ghost"
+                          onClick={() => removeRow(it.id)}
                         />
-                      </Box>
-                      <IconButton
-                        aria-label="Remove item"
-                        icon={<DeleteIcon />}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeRow(it.id)}
-                      />
-                    </Flex>
+                      </Flex>
 
-                    <SimpleGrid columns={2} gap={3} mb={3}>
-                      <Box>
-                        <Text fontSize="xs" color="gray.500" mb={1}>UnitPrice</Text>
-                        <NumberInput
-                          size="sm"
-                          value={Number.isFinite(it.price) ? it.price : 0}
-                          min={0}
-                          precision={2}
-                          step={0.5}
-                          onChange={(_, v) => update(it.id, { price: Number.isFinite(v) ? v : 0 })}
-                        >
-                          <NumberInputField />
-                        </NumberInput>
-                      </Box>
-                      <Box>
-                        <Text fontSize="xs" color="gray.500" mb={1}>Quantity</Text>
-                        <NumberInput
-                          size="sm"
-                          value={Number.isFinite(it.quantity) ? it.quantity : 1}
-                          min={1}
-                          step={1}
-                          onChange={(_, v) => update(it.id, { quantity: Number.isFinite(v) ? v : 1 })}
-                        >
-                          <NumberInputField />
-                        </NumberInput>
-                      </Box>
-                    </SimpleGrid>
-
-                    <Divider mb={3} />
-
-                    <Text fontSize="xs" color="gray.500" mb={2}>Contributors</Text>
-                    <Wrap spacing={3}>
-                      <WrapItem>
-                        <Checkbox
-                          isChecked={rowAllChecked(it)}
-                          isIndeterminate={
-                            it.assignees.length > 0 && it.assignees.length < contributors.length
-                          }
-                          onChange={(e) => toggleRowAll(it.id, e.target.checked)}
-                        >
-                          <Badge variant="subtle" px={2} py={1} rounded="md">All</Badge>
-                        </Checkbox>
-                      </WrapItem>
-
-                      {contributors.map(c => (
-                        <WrapItem key={c.id}>
-                          <Checkbox
-                            isChecked={it.assignees.includes(c.id)}
-                            onChange={() => toggleAssignee(it.id, c.id)}
+                      <SimpleGrid columns={2} gap={3} mb={3}>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500" mb={1}>UnitPrice</Text>
+                          <NumberInput
+                            size="sm"
+                            value={Number.isFinite(it.price) ? it.price : 0}
+                            min={0}
+                            precision={2}
+                            step={0.5}
+                            onChange={(_, v) => update(it.id, { price: Number.isFinite(v) ? v : 0 })}
                           >
-                            <Tooltip label={c.name} hasArrow>
-                              <Badge
-                                variant="subtle"
-                                px={2}
-                                py={1}
-                                rounded="md"
-                                maxW="28ch"
-                                noOfLines={1}
-                              >
-                                {c.name}
-                              </Badge>
-                            </Tooltip>
+                            <NumberInputField />
+                          </NumberInput>
+                        </Box>
+                        <Box>
+                          <Text fontSize="xs" color="gray.500" mb={1}>Quantity</Text>
+                          <NumberInput
+                            size="sm"
+                            value={Number.isFinite(it.quantity) ? it.quantity : 1}
+                            min={1}
+                            step={1}
+                            onChange={(_, v) => update(it.id, { quantity: Number.isFinite(v) ? v : 1 })}
+                          >
+                            <NumberInputField />
+                          </NumberInput>
+                        </Box>
+                      </SimpleGrid>
+
+                      <Divider mb={3} />
+
+                      <Text fontSize="xs" color="gray.500" mb={2}>Contributors</Text>
+                      <Wrap spacing={3}>
+                        <WrapItem>
+                          <Checkbox
+                            isChecked={rowAllChecked(it)}
+                            isIndeterminate={
+                              it.assignees.length > 0 && it.assignees.length < contributors.length
+                            }
+                            onChange={(e) => toggleRowAll(it.id, e.target.checked)}
+                          >
+                            <Badge variant="subtle" px={2} py={1} rounded="md">All</Badge>
                           </Checkbox>
                         </WrapItem>
-                      ))}
-                    </Wrap>
-                  </CardBody>
-                </Card>
-              ))}
+
+                        {contributors.map(c => (
+                          <WrapItem key={c.id}>
+                            <Checkbox
+                              isChecked={it.assignees.includes(c.id)}
+                              onChange={() => toggleAssignee(it.id, c.id)}
+                            >
+                              <Tooltip label={c.name} hasArrow>
+                                <Badge
+                                  variant="subtle"
+                                  px={2}
+                                  py={1}
+                                  rounded="md"
+                                  maxW="28ch"
+                                  noOfLines={1}
+                                >
+                                  {c.name}
+                                </Badge>
+                              </Tooltip>
+                            </Checkbox>
+                          </WrapItem>
+                        ))}
+                      </Wrap>
+                    </CardBody>
+                  </Card>
+                )
+              })}
             </Stack>
           </Box>
 

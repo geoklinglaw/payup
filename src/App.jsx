@@ -13,7 +13,7 @@ function StepRouter() {
   const shouldNavigateToHome = state.step === 3;
 
   const canNext = () => {
-    if (state.step === 0) return state.contributors.length >= 1
+    if (state.step === 0) return state.contributors.length > 1
     if (state.step === 1) return true
     if (state.step === 2) return true
     if (state.step === 3) return state.bills.length > 0
@@ -59,6 +59,7 @@ function StepRouter() {
       }
       try {
         const ok = await callSaveHandler() 
+        if (!ok) return;  
         console.log('[StepRouter] Bill entry confirmed. ok =', ok)
         dispatch({ type: 'GOTO', step: 3 })
       } catch (err) {
