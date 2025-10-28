@@ -75,7 +75,7 @@ export default async function handler(req, res) {
 
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const request = {
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: [
         { inlineData: { mimeType: mt, data: base64 } },
         { 

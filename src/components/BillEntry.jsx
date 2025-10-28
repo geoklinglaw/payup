@@ -169,7 +169,7 @@ export default function BillEntry() {
             </Stack>
 
             <Stack>
-              <Text fontSize="sm" color="gray.600">Tax Rate (%)</Text>
+              <Text fontSize="sm" color="gray.600">Surcharge (%)</Text>
               <NumberInput
                 value={taxRate}
                 min={0}
