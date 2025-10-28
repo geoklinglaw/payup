@@ -20,7 +20,7 @@ export default function BillEntry() {
   const [taxRate, setTaxRate] = useState(() => {
     const { subtotal, total } = state.receiptMeta || {}
     if (Number.isFinite(subtotal) && subtotal > 0 && Number.isFinite(total) && total > 0) {
-      return Math.max(0, +(((total - subtotal) / total) * 100).toFixed(2))
+      return Math.max(0, +(((total / subtotal) - 1) * 100).toFixed(2))
     }
     return 19
   })
@@ -129,8 +129,8 @@ export default function BillEntry() {
   }
 
   const total = useMemo(() => {
-    const subtotal = items.reduce((s, i) => s + (Number(i.price) * Number(i.quantity) || 0), 0)
-    return subtotal * (1 + taxRate / 100)
+    console.log("TOTAL: ",  state.receiptMeta.total)
+    return state.receiptMeta.total
   }, [items, taxRate])
 
   return (
